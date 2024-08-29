@@ -1,0 +1,172 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+DAR Coursework Solution
+
+1. Statistical learning methods 
+
+Answer(a): Parametric methods, Non-parametric methods may underperform  because they don't make strong assumptions about the mapping function, making them more flexible. However, they require a large amount of data to estimate accurately and can suffer from overfitting in scenarios with a small number of observations and a large number of predictors.
+
+Answer(b): Non-parametric methods, Non-parametric methods have the advantage of utilizing a large sample size and numerous predictors to estimate intricate relationships without being limited by assumptions regarding the functional form. In contrast, parametric methods may face challenges in accurately representing the complexity of the data due to their strict assumptions.
+
+
+Answer (c) Parametric methods, Parametric techniques rely on a predetermined function form (such as linear), and when this assumption holds true ( in cases of strong linearity), they can yield robust findings even with a limited sample size.
+
+
+Answer (d) Non-parametric methods, Non-parametric techniques refrain from making strong assumptions regarding the distribution of errors and possess the ability to adjust more effectively to the increased variability present in the data.
+
+________________________________________________________________________________________________________________________________________________
+2. Linear regression 
+
+Answwe (a) 
+```{r}
+#Answer-
+# Install and load the ISLR package
+library(ISLR)
+data(Auto)
+
+model <- lm(acceleration ~ cylinders, data=Auto)
+summary(model)
+
+```
+
+Answer i.  -There exists a correlation between the predictor variable (cylinders) and the response variable (acceleration). This is evident from the noteworthy p-value linked to the coefficient for cylinders (p < 0.001).
+
+Answer ii.  - The R-squared value of 0.2547 implies that roughly 25.47% of the variation in acceleration can be attributed to the number of cylinders in the model.
+
+Answer iii. -negative.coefficient of 'cylinders'((-0.8163)), The relationship between the number of cylinders and acceleration is .
+
+Answer iv.
+```{r}
+#Predicted acceleration for cylinders = 3.0
+new_data <- data.frame(cylinders = 3.0)
+predict(model, newdata = new_data, interval = "prediction", level = 0.99)
+```
+
+Answer (b)  
+```{r}
+plot(Auto$cylinders,Auto$acceleration,main = "Cylinders vs Acceleration",xlab = "Cylinders",ylab = "Acceleration")
+abline(model)
+```
+
+
+Answer (c) 
+
+```{r warning=FALSE}
+plot(Auto$cylinders, Auto$acceleration, xlab = "Cylinders", ylab = "Acceleration", 
+     main = "Scatterplot of Acceleration vs. Cylinders")
+abline(model)
+
+conf_intr <- predict(model, interval = "confidence", level = 0.99)
+pred_intr<- predict(model, interval = "prediction", level = 0.99)
+
+lines(Auto$cylinders, conf_intr[, "lwr"], col = "green")
+lines(Auto$cylinders, conf_intr[, "upr"], col = "green")
+
+lines(Auto$cylinders, pred_intr[, "lwr"], col = "red")
+lines(Auto$cylinders, pred_intr[, "upr"], col = "red")
+
+```
+________________________________________________________________________________________________________________________________________________
+
+3. Bayesian networks and naïve Bayes classifiers.
+Answer a) - 
+
+
+
+________________________________________________________________________________________________________________________________________________
+
+4. Predicting wine quality by using support vector machine classification algorithm.
+
+```{r}
+#prep data
+library(e1071)
+library(ROCR)
+# Reading the data
+training_data <- read.csv('WineQuality_Training.txt', header = TRUE, sep = ",")
+test_data <- read.csv('WineQuality_Testing.txt', header = TRUE, sep = ",")
+
+training_data$quality <- as.factor(training_data$quality)
+test_data$quality <- as.factor(test_data$quality)
+
+```
+
+Answer a.-
+```{r}
+set.seed(1)
+tune.grid <- expand.grid(C = c(0.01, 1, 100))
+svm_tune <- tune.svm(x = training_data[, -ncol(training_data)], 
+                     y = training_data$quality, 
+                     kernel = "linear", 
+                     cost = tune.grid$C)
+
+svm_model <-  svm_tune$best.model
+print(svm_model)
+```
+Answer b:
+```{r}
+svm_linear_model <- svm(quality ~ ., data = training_data, kernel = "linear", cost = 1)
+
+predictions <- predict(svm_linear_model, test_data)
+accuracy <- mean(predictions == test_data$quality)
+confusion_matrix <- table(predicted = predictions, actual = test_data$quality)
+print(confusion_matrix)
+cat("Prediction accuracy:", accuracy,"\n")
+```
+Answer c:
+```{r}
+set.seed(1)
+ranges <- list(cost = c(0.01, 1, 100), gamma = c(0.01, 1, 100))
+svm_cv_r <- tune(svm, quality ~ ., data = training_data, kernel = "radial", ranges = ranges)
+summary(svm_cv_r)
+
+```
+
+Answer d:
+
+```{r}
+svm_model <- svm(quality ~ ., data = training_data, kernel = "radial",cost=100,gamma=1)
+predictions <- predict(svm_model, newdata = test_data)
+accuracy <- mean(predictions == test_data$quality)
+#conf_matrix <- table(Actual = test_data$quality, Predicted = predictions)
+#conf_matrix
+print(paste("Classification Accuracy:", accuracy))
+```
+
+Answer e:
+```{r}
+logit_model <- glm(quality ~ ., data = training_data, family = "binomial")
+logit_predictions <- predict(logit_model, newdata = test_data, type = "response")
+
+svm_linear_model <- svm(quality ~ ., data = training_data, kernel = "linear", probability = TRUE)
+svm_linear_predictions <- attr(predict(svm_linear_model, newdata = test_data, probability = TRUE),
+                               "probabilities")
+
+svm_r_model <- svm(quality ~ ., data = training_data, kernel = "radial", probability = TRUE)
+svm_r_predictions <- attr(predict(svm_r_model, newdata = test_data, probability = TRUE),
+                          "probabilities")
+
+roc_logit <- prediction(logit_predictions, test_data$quality)
+roc_svm_linear <- prediction(svm_linear_predictions[,2], test_data$quality)
+roc_svm_rbf <- prediction(svm_r_predictions[,2], test_data$quality)
+
+roc_logit_perf <- performance(roc_logit, "tpr", "fpr")
+roc_svm_linear_perf <- performance(roc_svm_linear, "tpr", "fpr")
+roc_svm_rbf_perf <- performance(roc_svm_rbf, "tpr", "fpr")
+
+plot(roc_logit_perf, col = "blue", main = "ROC Curve Analysis")
+plot(roc_svm_linear_perf, col = "red", add = TRUE)
+plot(roc_svm_rbf_perf, col = "green", add = TRUE)
+
+
+legend("bottomright", legend = c("Logistic Regression", "SVM (Linear)", "SVM (RBF)"),
+       col = c("blue", "red", "green"), lwd = 2, cex = 0.8)
+
+```
+>>>>Based on ROC curves, Logistic regression model has the highest overall cumulative error rate (AUC), 
+followed by RBF regression model and then linear regression model. This indicates that the Logistic
+regression model is better at the classification of positive and negative instances than the other 2 models in this dataset.
